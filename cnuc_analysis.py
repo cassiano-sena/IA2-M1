@@ -1,35 +1,3 @@
-"""
-Análise do CNUC a partir do CSV municipios_costeiros_vulnerabilidade.csv.
-
-Fluxo principal:
-1) Lê o CSV municipios_costeiros_vulnerabilidade.csv
-2) Executa análises exploratórias
-3) Treina uma árvore de decisão estilo J48/WEKA
-4) Executa K-Means e regras de associação simplificadas
-
-Uso:
-    ./cnuc_analysis_from_log.py
-    ./cnuc_analysis_from_log.py --csv municipios_costeiros_vulnerabilidade.csv
-    ./cnuc_analysis_from_log.py --csv municipios_costeiros_vulnerabilidade.csv --extra-csv bc250_2025-hid_massa_dagua_a.csv
-
-Observação:
-- O script procura os arquivos primeiro na mesma pasta do script.
-- O arquivo extra é opcional e não interfere no fluxo principal.
-"""
-"""
-Para executar em uma máquina local, salve o arquivo como `cnuc_analysis_from_log.py`, coloque os CSVs na mesma pasta e rode:
-
-```bash
-chmod +x cnuc_analysis_from_log.py
-./cnuc_analysis_from_log.py
-```
-
-Se estiver no Windows, rode com:
-
-```bash
-python cnuc_analysis_from_log.py
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -46,6 +14,24 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier, export_text
 
+"""
+Análise do CNUC a partir do CSV municipios_costeiros_vulnerabilidade.csv.
+
+Fluxo principal:
+1) Lê o CSV municipios_costeiros_vulnerabilidade.csv
+2) Executa análises exploratórias
+3) Treina uma árvore de decisão estilo J48/WEKA
+4) Executa K-Means e regras de associação simplificadas
+
+Uso:
+    ./cnuc_analysis.py
+    ./cnuc_analysis.py --csv municipios_costeiros_vulnerabilidade.csv
+    ./cnuc_analysis.py --csv municipios_costeiros_vulnerabilidade.csv --extra-csv other_csv.csv
+
+Observação:
+- O script procura os arquivos primeiro na mesma pasta do script.
+- O arquivo extra é opcional e não interfere no fluxo principal.
+"""
 
 SEED = 42
 random.seed(SEED)
