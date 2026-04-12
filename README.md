@@ -74,7 +74,7 @@ O dataset principal contém municípios costeiros brasileiros com atributos como
 - urbanizacao_pct
 - erosao_ativa
 
-Os dados podem ser reais ou sintéticos baseados em fontes como MMA, ICMBio e IBGE.
+Os dados foram adaptados de bases reais de fontes como MMA, ICMBio, sendo as principais o IBGE BC250 2025 e o CNUC.
 
 ## Principais Resultados
 - A urbanização apresenta forte correlação positiva com a vulnerabilidade.
