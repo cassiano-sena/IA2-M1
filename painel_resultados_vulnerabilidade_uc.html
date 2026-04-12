@@ -1,0 +1,151 @@
+
+<style>
+.card { background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem; }
+.metric { background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.75rem 1rem; }
+.label { font-size:12px;color:var(--color-text-secondary);margin-bottom:4px; }
+.val { font-size:22px;font-weight:500;color:var(--color-text-primary); }
+.badge { font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);display:inline-block; }
+.rule-row { display:grid;grid-template-columns:200px 200px 70px 70px 50px;gap:8px;font-size:12px;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);align-items:center; }
+.tree-node { font-family:var(--font-mono);font-size:12px;line-height:1.8;color:var(--color-text-primary); }
+</style>
+
+<h2 style="font-size:15px;font-weight:500;margin:0 0 12px;color:var(--color-text-primary)">Painel de resultados — vulnerabilidade costeira × UCs de restinga</h2>
+
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px">
+  <div class="metric"><div class="label">Municípios analisados</div><div class="val">87</div></div>
+  <div class="metric"><div class="label">Acurácia J48 (10-fold)</div><div class="val">87,6%</div></div>
+  <div class="metric"><div class="label">R² restinga → IVC</div><div class="val">0,544</div></div>
+  <div class="metric"><div class="label">Atributo mais relevante</div><div class="val" style="font-size:14px">Urbanização</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:14px">
+  <div class="card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:10px">IVC médio por presença de UC</div>
+    <div style="position:relative;height:200px"><canvas id="c1" role="img" aria-label="Barras comparando IVC médio com e sem UC por região">IVC: com UC 2.90, sem UC 3.22</canvas></div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:10px">Cobertura de restinga × nível de vulnerabilidade</div>
+    <div style="position:relative;height:200px"><canvas id="c2" role="img" aria-label="Barras de restinga média por classe de IVC de 1 a 5">Restinga: IVC1=47%, IVC2=42%, IVC3=26%, IVC4=15%, IVC5=14%</canvas></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-bottom:14px">
+  <div class="card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:10px">Importância dos atributos (J48 equiv.)</div>
+    <div id="imp-bars"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:500;margin-bottom:10px">Agrupamentos K-Means (k=3)</div>
+    <div id="clusters"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+  <div style="font-size:13px;font-weight:500;margin-bottom:10px">Árvore de decisão J48 — regras extraídas</div>
+  <div class="tree-node">
+    urbanizacao_pct &lt;= 58,25%<br>
+    &nbsp;&nbsp;restinga_pct &lt;= 21,10% → <span style="color:#A32D2D;font-weight:500">possível Alta</span> / <span style="color:#0F6E56;font-weight:500">Baixa</span> (por urbanização)<br>
+    &nbsp;&nbsp;restinga_pct &gt; 21,10% → <span style="color:#0F6E56;font-weight:500">Baixa</span> ✓<br>
+    urbanizacao_pct &gt; 58,25%<br>
+    &nbsp;&nbsp;restinga_pct &lt;= 32,90% → <span style="color:#A32D2D;font-weight:500">Alta</span> ✓<br>
+    &nbsp;&nbsp;restinga_pct &gt; 32,90% → <span style="color:#0F6E56;font-weight:500">Baixa</span> (restinga protege mesmo com alta urbanização)
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--color-text-secondary)">Folhas: 5 · Tamanho da árvore: 9 · Acurácia treino: 97,7% · 10-fold: 87,6%</div>
+</div>
+
+<div class="card">
+  <div style="font-size:13px;font-weight:500;margin-bottom:8px">Regras de associação — principais padrões</div>
+  <div class="rule-row" style="font-weight:500;color:var(--color-text-secondary);border-bottom:1px solid var(--color-border-secondary)">
+    <span>Antecedente</span><span>Consequente</span><span>Suporte</span><span>Confiança</span><span>Lift</span>
+  </div>
+  <div class="rule-row"><span>Restinga alta (&gt;35%)</span><span style="color:#0F6E56">→ Vuln. Baixa</span><span>30%</span><span style="font-weight:500">100%</span><span>1,58</span></div>
+  <div class="rule-row"><span>Urbanização alta (&gt;60%)</span><span style="color:#A32D2D">→ Vuln. Alta</span><span>28%</span><span style="font-weight:500">100%</span><span>2,72</span></div>
+  <div class="rule-row"><span>Urbanização baixa (&lt;35%)</span><span style="color:#0F6E56">→ Vuln. Baixa</span><span>39%</span><span style="font-weight:500">100%</span><span>1,58</span></div>
+  <div class="rule-row"><span>Restinga baixa (&lt;15%)</span><span style="color:#A32D2D">→ Vuln. Alta</span><span>17%</span><span>83%</span><span>2,27</span></div>
+  <div class="rule-row"><span>Tem UC = Sim</span><span style="color:#0F6E56">→ Vuln. Baixa</span><span>32%</span><span>67%</span><span>1,05</span></div>
+  <div class="rule-row" style="border:none"><span>Tem UC = Não</span><span style="color:#A32D2D">→ Vuln. Alta</span><span>21%</span><span>40%</span><span>1,09</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+const tc = dark ? '#c2c0b6' : '#3d3d3a';
+const gc = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+
+new Chart(document.getElementById('c1'), {
+  type: 'bar',
+  data: {
+    labels: ['Com UC', 'Sem UC'],
+    datasets: [{
+      label: 'IVC médio',
+      data: [2.90, 3.22],
+      backgroundColor: ['#1D9E75','#E24B4A'],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 0, max: 5, ticks: { color: tc, stepSize: 1 }, grid: { color: gc } },
+      x: { ticks: { color: tc }, grid: { display: false } }
+    }
+  }
+});
+
+new Chart(document.getElementById('c2'), {
+  type: 'bar',
+  data: {
+    labels: ['IVC 1\n(muito baixa)', 'IVC 2\n(baixa)', 'IVC 3\n(mod.)', 'IVC 4\n(alta)', 'IVC 5\n(muito alta)'],
+    datasets: [{
+      label: 'Restinga média (%)',
+      data: [47.3, 42.1, 26.2, 15.0, 14.2],
+      backgroundColor: ['#1D9E75','#5DCAA5','#EF9F27','#D85A30','#E24B4A'],
+      borderWidth: 0
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 0, max: 55, ticks: { color: tc }, grid: { color: gc } },
+      x: { ticks: { color: tc, font: { size: 10 } }, grid: { display: false } }
+    }
+  }
+});
+
+const impData = [
+  { feat: 'urbanizacao_pct', val: 69.2 },
+  { feat: 'restinga_pct', val: 27.3 },
+  { feat: 'erosao_ativa', val: 3.5 },
+  { feat: 'tem_uc', val: 0 },
+  { feat: 'tipo_uc', val: 0 },
+  { feat: 'costa_uc_km', val: 0 },
+];
+const impEl = document.getElementById('imp-bars');
+impData.forEach(({feat, val}) => {
+  const color = val > 30 ? '#E24B4A' : val > 5 ? '#EF9F27' : '#B4B2A9';
+  impEl.innerHTML += `<div style="margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+      <span style="color:var(--color-text-primary)">${feat}</span>
+      <span style="color:var(--color-text-secondary)">${val.toFixed(1)}%</span>
+    </div>
+    <div style="background:var(--color-background-secondary);border-radius:4px;height:8px;overflow:hidden">
+      <div style="width:${val}%;height:100%;background:${color};border-radius:4px"></div>
+    </div>
+  </div>`;
+});
+
+const clusters = [
+  { id: 0, n: 29, ivc: '3,55', rest: '20,0%', urb: '59,0%', uc: '52%', label: 'Vulnerabilidade moderada-alta', color: '#EF9F27' },
+  { id: 1, n: 38, ivc: '1,97', rest: '41,8%', urb: '22,5%', uc: '53%', label: 'Vulnerabilidade baixa', color: '#1D9E75' },
+  { id: 2, n: 20, ivc: '4,45', rest: '12,8%', urb: '66,0%', uc: '35%', label: 'Vulnerabilidade muito alta', color: '#E24B4A' },
+];
+const cEl = document.getElementById('clusters');
+clusters.forEach(c => {
+  cEl.innerHTML += `<div style="border-left:3px solid ${c.color};padding:8px 10px;margin-bottom:8px;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:var(--color-background-secondary)">
+    <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">Cluster ${c.id} — ${c.label} (${c.n} mun.)</div>
+    <div style="font-size:11px;color:var(--color-text-secondary)">IVC médio: ${c.ivc} · Restinga: ${c.rest} · Urbanização: ${c.urb} · Com UC: ${c.uc}</div>
+  </div>`;
+});
+</script>
