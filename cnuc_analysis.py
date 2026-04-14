@@ -9,6 +9,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+from mlxtend.preprocessing import TransactionEncoder
 from scipy import stats
 from sklearn.cluster import KMeans
 from sklearn.metrics import classification_report, confusion_matrix
@@ -120,7 +122,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     rename_map = {
         "Código UC": "codigo_uc",
         "Códogo UC": "codigo_uc",
-        "C�digo UC": "codigo_uc",
+        "C\ufffdigo UC": "codigo_uc",
         "ID_UC": "codigo_uc",
         "Nome da UC": "nome_uc",
         "NOME DA UC": "nome_uc",
@@ -130,7 +132,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "Area (ha)": "area_ha",
         "Área soma biomas": "area_ha",
         "Area soma biomas": "area_ha",
-        "�rea soma biomas": "area_ha",
+        "\ufffdrea soma biomas": "area_ha",
     }
     existing = {k: v for k, v in rename_map.items() if k in df.columns}
     df = df.rename(columns=existing)
@@ -360,6 +362,8 @@ def j48_like_tree(df: pd.DataFrame) -> None:
     )
     y = df_var["classe"]
 
+    # Nota: class_weight="balanced" já corrige o desbalanceamento estrutural
+    # sem necessidade de SMOTE, que criaria trajetórias históricas sintéticas.
     clf = DecisionTreeClassifier(
         criterion="entropy",
         min_samples_leaf=2,
@@ -423,8 +427,8 @@ def clustering(df: pd.DataFrame) -> None:
         print(f"  categorias top      : {sub['categoria_manejo'].value_counts().head(3).to_dict()}")
 
 
-def association_rules(df: pd.DataFrame) -> None:
-    print_header("REGRAS DE ASSOCIAÇÃO (simplificadas)")
+def apriori_rules(df: pd.DataFrame) -> None:
+    print_header("REGRAS DE ASSOCIAÇÃO (Apriori — mlxtend)")
 
     df_var = build_variation_table(df)
     df_var = df_var[df_var["qc_pass"]].copy()
@@ -434,31 +438,50 @@ def association_rules(df: pd.DataFrame) -> None:
         bins=[-np.inf, -0.01, 0.01, np.inf],
         labels=["reduziu", "estavel", "aumentou"],
     )
+    df_var = df_var.dropna(subset=["tendencia"]).copy()
 
-    total = len(df_var)
-    combos = [
-        ("grupo", "PI", "tendencia", "reduziu"),
-        ("grupo", "US", "tendencia", "reduziu"),
-        ("coorte", "nova", "tendencia", "aumentou"),
-        ("coorte", "existente", "tendencia", "estavel"),
-        ("serie_tipo", "curta", "tendencia", "reduziu"),
-        ("serie_tipo", "longa", "tendencia", "estavel"),
-    ]
+    # ADICIONAR categoria_manejo para capturar padrões específicos
+    transactions = df_var.apply(
+        lambda r: [
+            f"grupo={r['grupo']}",
+            f"categoria={r['categoria_manejo']}",  # ← NOVO
+            f"coorte={r['coorte']}",
+            f"serie={r['serie_tipo']}",
+            f"tendencia={r['tendencia']}",
+        ],
+        axis=1,
+    ).tolist()
 
-    print(f"{'Antecedente':<30} {'Consequente':<20} {'Suporte':>8} {'Confiança':>9} {'Lift':>6}")
-    print("-" * 82)
+    te = TransactionEncoder()
+    te_array = te.fit(transactions).transform(transactions)
+    df_enc = pd.DataFrame(te_array, columns=te.columns_)
 
-    for col_a, val_a, col_b, val_b in combos:
-        mask_a = df_var[col_a].astype(str) == val_a
-        mask_ab = mask_a & (df_var[col_b].astype(str) == val_b)
+    # ⚠️ CORREÇÃO PRINCIPAL: min_support mais baixo
+    min_sup = 0.02  # 2% = ~15 UCs (era 5% = ~39 UCs)
+    frequent_itemsets = apriori(df_enc, min_support=min_sup, use_colnames=True)
 
-        suporte = mask_ab.sum() / total if total else 0
-        confianca = mask_ab.sum() / mask_a.sum() if mask_a.sum() > 0 else 0
-        base_rate = (df_var[col_b].astype(str) == val_b).mean()
-        lift = confianca / base_rate if base_rate > 0 else 0
+    if frequent_itemsets.empty:
+        print("Nenhum itemset frequente encontrado.")
+        return
 
-        if suporte > 0.02:
-            print(f"{col_a}={val_a:<24} {col_b}={val_b:<14} {suporte:>8.2f} {confianca:>9.2f} {lift:>6.2f}")
+    # Gerar regras com lift mínimo para filtrar associações espúrias
+    rules = association_rules(
+        frequent_itemsets,
+        metric="lift",
+        min_threshold=1.0,  # Lift > 1 indica associação positiva real
+    )
+
+    # Separar por tipo de consequente para análise completa
+    for tendencia_val in ["estavel", "reduziu", "aumentou"]:
+        rules_sub = rules[
+            rules["consequents"].apply(lambda x: f"tendencia={tendencia_val}" in str(x))
+        ]
+        if not rules_sub.empty:
+            print(f"\n--- Regras para tendencia={tendencia_val} ---")
+            print(rules_sub[["antecedents", "consequents", "support", "confidence", "lift"]]
+                  .sort_values("lift", ascending=False)
+                  .head(5)
+                  .to_string(index=False))
 
 
 def export_results(df: pd.DataFrame, out_dir: str = "results") -> None:
@@ -563,7 +586,7 @@ def main() -> int:
         cohort_analysis(df)
         j48_like_tree(df)
         clustering(df)
-        association_rules(df)
+        apriori_rules(df)
 
         print("\nConcluído.")
         return 0
